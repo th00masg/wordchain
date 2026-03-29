@@ -1,7 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
+import redis from "./redis";
 import { ThemeId } from "./types";
 
 const client = new Anthropic();
+
+// Cache key: wordchain:theme:{theme}:{word} → "JA:reason" or "NEI:reason"
+const CACHE_PREFIX = "wordchain:theme";
+const CACHE_TTL = 60 * 60 * 24 * 30; // 30 days
 
 const THEME_DESCRIPTIONS: Record<Exclude<ThemeId, "free">, string> = {
   animals:
@@ -21,6 +26,17 @@ export async function checkTheme(
   word: string,
   theme: Exclude<ThemeId, "free">
 ): Promise<{ fits: boolean; reason: string }> {
+  const cacheKey = `${CACHE_PREFIX}:${theme}:${word}`;
+
+  // Check cache first
+  const cached = await redis.get<string>(cacheKey);
+  if (cached) {
+    const fits = cached.startsWith("JA");
+    const reason = cached.replace(/^(JA|NEI):?\s*/i, "").trim();
+    return { fits, reason };
+  }
+
+  // Not cached — call Claude
   const themeDesc = THEME_DESCRIPTIONS[theme];
 
   const message = await client.messages.create({
@@ -45,6 +61,9 @@ NEI: [kort grunn på norsk]`,
     message.content[0].type === "text" ? message.content[0].text.trim() : "";
   const fits = text.toUpperCase().startsWith("JA");
   const reason = text.replace(/^(JA|NEI):?\s*/i, "").trim();
+
+  // Cache the result
+  await redis.set(cacheKey, text, { ex: CACHE_TTL });
 
   return { fits, reason };
 }
