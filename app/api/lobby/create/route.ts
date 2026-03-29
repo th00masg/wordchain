@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     usedWords: [startWord],
     currentTurnPlayerId: null,
     turnDeadline: null,
-    turnTime: 15,
+    turnTime: 20,
     eliminationReason: null,
     winnerName: null,
   };

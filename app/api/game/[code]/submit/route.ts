@@ -56,7 +56,14 @@ export async function POST(
     playerName: player.name,
   });
   game.usedWords.push(normalizedWord);
-  player.score += 1;
+
+  // Score: 1 point base + bonus for longer words
+  let points = 1;
+  if (normalizedWord.length >= 6) points = 2;
+  if (normalizedWord.length >= 8) points = 3;
+  if (normalizedWord.length >= 10) points = 5;
+  player.score += points;
+
   game.eliminationReason = null;
 
   // Move to next alive player

@@ -21,7 +21,7 @@ export default function JoinPage({ params }: { params: Promise<{ code: string }>
   const [error, setError] = useState("");
 
   async function handleJoin() {
-    if (!name.trim()) return setError("Skriv inn navnet ditt");
+    if (!name.trim()) return setError("Skriv inn navnet ditt! ✏️");
     setLoading(true);
     setError("");
     try {
@@ -35,7 +35,7 @@ export default function JoinPage({ params }: { params: Promise<{ code: string }>
       localStorage.setItem("wordchain-player-name", name.trim());
       router.push(`/lobby/${code}`);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Noe gikk galt");
+      setError(e instanceof Error ? e.message : "Oops! Noe gikk galt 😅");
     } finally {
       setLoading(false);
     }
@@ -44,32 +44,44 @@ export default function JoinPage({ params }: { params: Promise<{ code: string }>
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-black">Bli med i spill</h1>
-          <p className="mt-1 font-mono text-2xl tracking-widest text-indigo-400">{code}</p>
+        <div className="animate-bounce-in text-center">
+          <div className="text-5xl mb-3">🎮</div>
+          <h1 className="bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-3xl font-black text-transparent">
+            Bli med i spill!
+          </h1>
+          <div className="mt-2 inline-block rounded-xl bg-white/10 px-4 py-1 backdrop-blur-sm">
+            <span className="font-mono text-2xl font-black tracking-[0.3em] text-yellow-300">{code}</span>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          <input
-            type="text"
-            placeholder="Ditt navn"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={20}
-            autoFocus
-            className="w-full rounded-lg bg-gray-800 px-4 py-3 text-white placeholder-gray-500 outline-none ring-1 ring-gray-700 focus:ring-2 focus:ring-indigo-500"
-          />
+        <div className="animate-slide-up space-y-4" style={{ animationDelay: "0.2s" }}>
+          <div>
+            <label className="mb-1 block text-center text-sm font-bold text-yellow-300">
+              Hva heter du? 👋
+            </label>
+            <input
+              type="text"
+              placeholder="Skriv navnet ditt..."
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={20}
+              autoFocus
+              className="w-full rounded-2xl border-3 border-cyan-400/50 bg-white/10 px-5 py-4 text-center text-xl font-bold text-white placeholder-white/40 outline-none backdrop-blur-sm transition-all focus:border-cyan-400 focus:bg-white/20 focus:scale-105"
+            />
+          </div>
 
           <button
             onClick={handleJoin}
             disabled={loading}
-            className="w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold transition hover:bg-indigo-500 disabled:opacity-50"
+            className="w-full rounded-2xl bg-gradient-to-r from-green-400 to-emerald-500 px-6 py-4 text-xl font-black shadow-lg shadow-green-500/30 transition-all hover:scale-105 hover:shadow-xl active:scale-95 disabled:opacity-50"
           >
-            Bli med
+            {loading ? "⏳ Venter..." : "🚀 Bli med!"}
           </button>
 
           {error && (
-            <p className="text-center text-sm text-red-400">{error}</p>
+            <div className="animate-pop rounded-2xl bg-red-500/20 border border-red-400/50 px-4 py-3 text-center font-bold text-red-300">
+              {error}
+            </div>
           )}
         </div>
       </div>

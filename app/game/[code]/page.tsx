@@ -1,12 +1,35 @@
 "use client";
 
-import { useEffect, useState, useRef, use } from "react";
+import { useEffect, useState, useRef, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { Game } from "@/lib/types";
 
 function getPlayerId() {
   if (typeof window === "undefined") return "";
   return localStorage.getItem("wordchain-player-id") ?? "";
+}
+
+const PLAYER_EMOJIS = ["🦊", "🐸", "🐼", "🦁", "🐯", "🐨", "🐙", "🦄"];
+const PLAYER_COLORS = [
+  "from-yellow-400 to-orange-500",
+  "from-pink-400 to-rose-500",
+  "from-cyan-400 to-blue-500",
+  "from-green-400 to-emerald-500",
+  "from-purple-400 to-violet-500",
+  "from-red-400 to-pink-500",
+  "from-teal-400 to-cyan-500",
+  "from-amber-400 to-yellow-500",
+];
+
+const REACTIONS = ["🔥", "⚡", "💥", "🌟", "✨", "🎯", "💎", "🚀"];
+const LONG_WORD_REACTIONS = ["🤯", "🏆", "👑", "💪", "🎉"];
+const STREAK_MESSAGES = ["Bra! 👍", "Kjempebra! 🔥", "UTROLIG! ⚡", "LEGENDE! 👑"];
+
+function getTimerColor(timeLeft: number, turnTime: number) {
+  const pct = timeLeft / turnTime;
+  if (pct > 0.5) return "from-green-400 to-emerald-500";
+  if (pct > 0.25) return "from-yellow-400 to-orange-500";
+  return "from-red-400 to-pink-500";
 }
 
 export default function GamePage({ params }: { params: Promise<{ code: string }> }) {
@@ -17,10 +40,17 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [reaction, setReaction] = useState<string | null>(null);
+  const [lastChainLen, setLastChainLen] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const chainEndRef = useRef<HTMLDivElement>(null);
 
   const playerId = getPlayerId();
+
+  const showReaction = useCallback((text: string) => {
+    setReaction(text);
+    setTimeout(() => setReaction(null), 1500);
+  }, []);
 
   useEffect(() => {
     if (!playerId) {
@@ -43,6 +73,22 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
     const interval = setInterval(poll, 1000);
     return () => clearInterval(interval);
   }, [code, playerId, router]);
+
+  // Show reaction when new word is added
+  useEffect(() => {
+    if (!game) return;
+    if (game.chain.length > lastChainLen && lastChainLen > 0) {
+      const newWord = game.chain[game.chain.length - 1];
+      if (newWord.playerId !== "system") {
+        if (newWord.word.length >= 8) {
+          showReaction(LONG_WORD_REACTIONS[Math.floor(Math.random() * LONG_WORD_REACTIONS.length)]);
+        } else {
+          showReaction(REACTIONS[Math.floor(Math.random() * REACTIONS.length)]);
+        }
+      }
+    }
+    setLastChainLen(game.chain.length);
+  }, [game?.chain.length, lastChainLen, showReaction, game]);
 
   // Countdown timer
   useEffect(() => {
@@ -92,7 +138,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
         setError("");
       }
     } catch {
-      setError("Noe gikk galt");
+      setError("Noe gikk galt 😅");
     } finally {
       setSubmitting(false);
     }
@@ -110,13 +156,17 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   if (!game) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-400">Laster...</p>
+        <div className="animate-float text-center">
+          <div className="text-5xl mb-3">⏳</div>
+          <p className="text-xl font-bold text-purple-200">Laster spillet...</p>
+        </div>
       </main>
     );
   }
 
   const isMyTurn = game.currentTurnPlayerId === playerId;
   const currentPlayer = game.players.find((p) => p.id === game.currentTurnPlayerId);
+  const currentPlayerIndex = game.players.findIndex((p) => p.id === game.currentTurnPlayerId);
   const meAlive = game.players.find((p) => p.id === playerId)?.alive ?? false;
   const lastWord = game.chain[game.chain.length - 1]?.word ?? "";
   const requiredLetter = lastWord[lastWord.length - 1];
@@ -124,62 +174,129 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
 
   return (
     <main className="flex min-h-screen flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between border-b border-gray-800 px-4 py-3">
-        <div className="text-sm text-gray-400">
-          Kode: <span className="font-mono font-bold text-gray-200">{code}</span>
+      {/* Floating reaction */}
+      {reaction && (
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
+          <span className="animate-bounce-in text-8xl">{reaction}</span>
         </div>
-        {game.state === "playing" && timeLeft !== null && (
-          <div
-            className={`font-mono text-2xl font-black ${
-              timeLeft <= 5 ? "text-red-400 animate-pulse" : "text-white"
-            }`}
-          >
-            {timeLeft}
+      )}
+
+      {/* Header with timer */}
+      <header className="relative overflow-hidden border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-bold text-purple-300">
+            🔗 <span className="font-mono text-yellow-300">{code}</span>
+          </div>
+
+          {/* Timer */}
+          {game.state === "playing" && timeLeft !== null && (
+            <div className="flex flex-col items-center">
+              <span
+                className={`font-mono text-4xl font-black bg-gradient-to-r ${getTimerColor(timeLeft, game.turnTime)} bg-clip-text text-transparent ${
+                  timeLeft <= 5 ? "animate-timer-shake" : ""
+                } ${timeLeft <= 3 ? "animate-wiggle" : ""}`}
+              >
+                {timeLeft}
+              </span>
+              {/* Timer bar */}
+              <div className="mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${getTimerColor(timeLeft, game.turnTime)} transition-all duration-200`}
+                  style={{ width: `${(timeLeft / game.turnTime) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="text-sm font-bold text-purple-300">
+            {game.players.filter((p) => p.alive).length}/{game.players.length} igjen 💪
+          </div>
+        </div>
+
+        {/* Current turn indicator */}
+        {game.state === "playing" && currentPlayer && (
+          <div className={`mt-2 rounded-xl px-3 py-1.5 text-center ${
+            isMyTurn
+              ? "bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/30"
+              : "bg-white/5"
+          }`}>
+            <span className="text-lg font-bold">
+              {isMyTurn ? (
+                <span className="text-yellow-300">🎯 Din tur! Ord med &quot;{requiredLetter.toUpperCase()}&quot;</span>
+              ) : (
+                <span className="text-purple-200">
+                  {PLAYER_EMOJIS[currentPlayerIndex % PLAYER_EMOJIS.length]} {currentPlayer.name} tenker...
+                </span>
+              )}
+            </span>
           </div>
         )}
-        <div className="text-sm text-gray-400">
-          {game.players.filter((p) => p.alive).length}/{game.players.length} igjen
-        </div>
       </header>
 
       {/* Elimination banner */}
       {game.eliminationReason && (
-        <div className="bg-red-900/40 px-4 py-2 text-center text-sm text-red-300">
-          {game.eliminationReason}
+        <div className="animate-pop bg-red-500/20 border-b border-red-400/30 px-4 py-2 text-center text-lg font-bold text-red-300">
+          💀 {game.eliminationReason}
         </div>
       )}
 
       {/* Game finished */}
       {game.state === "finished" && (
-        <div className="flex flex-col items-center gap-4 px-4 py-8">
-          <p className="text-2xl font-black">Spillet er over!</p>
-          {game.winnerName && (
-            <p className="text-xl text-indigo-400">
-              {game.winnerName} vant!
+        <div className="flex flex-col items-center gap-5 px-4 py-8">
+          <div className="animate-bounce-in text-center">
+            <div className="text-6xl mb-2">🏆</div>
+            <p className="bg-gradient-to-r from-yellow-300 via-pink-400 to-cyan-400 bg-clip-text text-3xl font-black text-transparent">
+              Spillet er over!
             </p>
+          </div>
+
+          {game.winnerName && (
+            <div className="animate-pop rounded-2xl bg-gradient-to-r from-yellow-400/20 to-amber-400/20 border border-yellow-400/30 px-6 py-3">
+              <span className="text-2xl font-black text-yellow-300">
+                👑 {game.winnerName} vant!
+              </span>
+            </div>
           )}
-          <div className="w-full max-w-xs space-y-1">
+
+          <div className="w-full max-w-xs space-y-2">
             {[...game.players]
               .sort((a, b) => b.score - a.score)
-              .map((p) => (
-                <div
-                  key={p.id}
-                  className="flex justify-between rounded-lg bg-gray-800 px-4 py-2"
-                >
-                  <span className={!p.alive ? "text-gray-500 line-through" : ""}>
-                    {p.name}
-                  </span>
-                  <span className="font-mono">{p.score}</span>
-                </div>
-              ))}
+              .map((p, rank) => {
+                const originalIndex = game.players.findIndex((op) => op.id === p.id);
+                return (
+                  <div
+                    key={p.id}
+                    className={`animate-slide-up flex items-center gap-3 rounded-2xl px-4 py-3 ${
+                      rank === 0
+                        ? "bg-yellow-400/20 border border-yellow-400/30"
+                        : "bg-white/10"
+                    }`}
+                    style={{ animationDelay: `${0.1 * rank}s` }}
+                  >
+                    <span className="text-2xl">
+                      {rank === 0 ? "🥇" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : PLAYER_EMOJIS[originalIndex % PLAYER_EMOJIS.length]}
+                    </span>
+                    <span className={`flex-1 text-lg font-black ${!p.alive ? "text-gray-500 line-through" : "text-white"}`}>
+                      {p.name}
+                    </span>
+                    <span className="rounded-full bg-white/10 px-3 py-1 font-mono text-lg font-bold text-yellow-300">
+                      {p.score}
+                    </span>
+                  </div>
+                );
+              })}
           </div>
+
+          <div className="text-center text-purple-300">
+            <p>Kjeden ble <span className="font-bold text-white">{game.chain.length - 1}</span> ord lang! 🔗</p>
+          </div>
+
           {isHost && (
             <button
               onClick={handleReset}
-              className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold transition hover:bg-indigo-500"
+              className="rounded-2xl bg-gradient-to-r from-green-400 to-emerald-500 px-8 py-4 text-xl font-black shadow-lg shadow-green-500/30 transition-all hover:scale-105 active:scale-95"
             >
-              Spill igjen
+              🔄 Spill igjen!
             </button>
           )}
         </div>
@@ -188,61 +305,74 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
       {/* Word chain */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="mx-auto max-w-md space-y-2">
-          {game.chain.map((entry, i) => (
-            <div
-              key={i}
-              className={`flex items-baseline gap-2 ${
-                entry.playerId === "system" ? "justify-center" : ""
-              }`}
-            >
-              {entry.playerId === "system" ? (
-                <span className="rounded-full bg-gray-800 px-4 py-1 text-sm text-gray-400">
-                  {entry.word}
-                </span>
-              ) : (
-                <>
-                  <span className="text-xs text-gray-500">{entry.playerName}</span>
-                  <span
-                    className={`rounded-lg px-3 py-1 font-medium ${
-                      entry.playerId === playerId
-                        ? "bg-indigo-600/30 text-indigo-300"
-                        : "bg-gray-800 text-gray-200"
-                    }`}
-                  >
-                    <span className="text-indigo-400">{entry.word[0]}</span>
-                    {entry.word.slice(1, -1)}
-                    <span className="text-emerald-400">{entry.word[entry.word.length - 1]}</span>
+          {game.chain.map((entry, i) => {
+            const playerIndex = game.players.findIndex((p) => p.id === entry.playerId);
+            return (
+              <div
+                key={i}
+                className={`animate-slide-up ${
+                  entry.playerId === "system" ? "flex justify-center" : "flex items-center gap-2"
+                }`}
+                style={{ animationDelay: `${Math.min(i * 0.05, 1)}s` }}
+              >
+                {entry.playerId === "system" ? (
+                  <span className="rounded-full bg-white/10 px-5 py-2 text-sm font-bold text-purple-300 backdrop-blur-sm">
+                    🌟 {entry.word}
                   </span>
-                </>
-              )}
-            </div>
-          ))}
+                ) : (
+                  <>
+                    <span className="text-lg">
+                      {PLAYER_EMOJIS[playerIndex % PLAYER_EMOJIS.length]}
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-purple-400">{entry.playerName}</span>
+                      <span
+                        className={`inline-block rounded-xl px-3 py-1 text-lg font-black ${
+                          entry.playerId === playerId
+                            ? `bg-gradient-to-r ${PLAYER_COLORS[playerIndex % PLAYER_COLORS.length]} text-white shadow-lg`
+                            : "bg-white/10 text-white backdrop-blur-sm"
+                        }`}
+                      >
+                        <span className="text-yellow-300 text-xl">{entry.word[0].toUpperCase()}</span>
+                        {entry.word.slice(1, -1)}
+                        <span className="text-emerald-300 text-xl">{entry.word[entry.word.length - 1]}</span>
+                      </span>
+                    </div>
+                    {entry.word.length >= 8 && (
+                      <span className="text-sm" title="Langt ord!">💎</span>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
           <div ref={chainEndRef} />
         </div>
       </div>
 
       {/* Players bar */}
-      <div className="flex gap-2 overflow-x-auto border-t border-gray-800 px-4 py-2">
-        {game.players.map((p) => (
+      <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-4 py-2 scrollbar-hide">
+        {game.players.map((p, i) => (
           <div
             key={p.id}
-            className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition-all ${
               p.id === game.currentTurnPlayerId
-                ? "bg-indigo-600 text-white"
+                ? `bg-gradient-to-r ${PLAYER_COLORS[i % PLAYER_COLORS.length]} text-white shadow-lg animate-pulse-ring`
                 : p.alive
-                ? "bg-gray-800 text-gray-300"
-                : "bg-gray-900 text-gray-600 line-through"
+                ? "bg-white/10 text-white/80"
+                : "bg-white/5 text-white/30 line-through"
             }`}
           >
+            <span>{PLAYER_EMOJIS[i % PLAYER_EMOJIS.length]}</span>
             <span>{p.name}</span>
-            <span className="text-xs opacity-70">{p.score}</span>
+            <span className="rounded-full bg-black/20 px-1.5 text-xs text-yellow-300">{p.score}</span>
           </div>
         ))}
       </div>
 
       {/* Input area */}
       {game.state === "playing" && (
-        <div className="border-t border-gray-800 p-4">
+        <div className="border-t border-white/10 p-4">
           {isMyTurn && meAlive ? (
             <form onSubmit={handleSubmit} className="mx-auto max-w-md space-y-2">
               <div className="flex gap-2">
@@ -252,27 +382,40 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
                     type="text"
                     value={word}
                     onChange={(e) => setWord(e.target.value)}
-                    placeholder={`Ord som starter med "${requiredLetter}"...`}
+                    placeholder={`Begynn med "${requiredLetter.toUpperCase()}"...`}
                     autoComplete="off"
-                    className="w-full rounded-lg bg-gray-800 px-4 py-3 text-white placeholder-gray-500 outline-none ring-2 ring-indigo-500"
+                    autoCapitalize="off"
+                    className="w-full rounded-2xl border-3 border-yellow-400 bg-white/10 px-5 py-4 text-xl font-bold text-white placeholder-white/30 outline-none backdrop-blur-sm transition-all focus:bg-white/20 focus:scale-[1.02]"
                   />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl">✏️</span>
                 </div>
                 <button
                   type="submit"
                   disabled={submitting || !word.trim()}
-                  className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold transition hover:bg-indigo-500 disabled:opacity-50"
+                  className="rounded-2xl bg-gradient-to-r from-green-400 to-emerald-500 px-6 py-4 text-xl font-black shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
                 >
-                  Send
+                  🚀
                 </button>
               </div>
-              {error && <p className="text-sm text-red-400">{error}</p>}
+              {error && (
+                <div className="animate-pop rounded-xl bg-red-500/20 border border-red-400/30 px-3 py-2 text-center text-sm font-bold text-red-300">
+                  {error}
+                </div>
+              )}
             </form>
           ) : meAlive ? (
-            <p className="text-center text-gray-400">
-              Venter på <span className="font-semibold text-white">{currentPlayer?.name}</span>...
-            </p>
+            <div className="text-center">
+              <span className="text-lg font-bold text-purple-200">
+                {PLAYER_EMOJIS[currentPlayerIndex % PLAYER_EMOJIS.length]}{" "}
+                <span className="text-white">{currentPlayer?.name}</span> tenker... 🤔
+              </span>
+            </div>
           ) : (
-            <p className="text-center text-gray-500">Du er eliminert. Ser på...</p>
+            <div className="text-center">
+              <span className="text-lg font-bold text-purple-400">
+                👀 Du ser på! Heier du?
+              </span>
+            </div>
           )}
         </div>
       )}

@@ -13,15 +13,18 @@ function getPlayerId() {
   return id;
 }
 
+const ANIMAL_EMOJIS = ["🦊", "🐸", "🐼", "🦁", "🐯", "🐨", "🐙", "🦄"];
+
 export default function Home() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mode, setMode] = useState<"home" | "join">("home");
 
   async function handleCreate() {
-    if (!name.trim()) return setError("Skriv inn navnet ditt");
+    if (!name.trim()) return setError("Skriv inn navnet ditt først! ✏️");
     setLoading(true);
     setError("");
     try {
@@ -35,15 +38,15 @@ export default function Home() {
       localStorage.setItem("wordchain-player-name", name.trim());
       router.push(`/lobby/${data.code}`);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Noe gikk galt");
+      setError(e instanceof Error ? e.message : "Oops! Noe gikk galt 😅");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleJoin() {
-    if (!name.trim()) return setError("Skriv inn navnet ditt");
-    if (!joinCode.trim()) return setError("Skriv inn spillkoden");
+    if (!name.trim()) return setError("Skriv inn navnet ditt først! ✏️");
+    if (!joinCode.trim()) return setError("Skriv inn spillkoden! 🔑");
     setLoading(true);
     setError("");
     try {
@@ -58,7 +61,7 @@ export default function Home() {
       localStorage.setItem("wordchain-player-name", name.trim());
       router.push(`/lobby/${code}`);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Noe gikk galt");
+      setError(e instanceof Error ? e.message : "Oops! Noe gikk galt 😅");
     } finally {
       setLoading(false);
     }
@@ -66,58 +69,101 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="text-center">
-          <h1 className="text-5xl font-black tracking-tight">Ordkjede</h1>
-          <p className="mt-2 text-gray-400">Bygg ordkjeder med venner</p>
+      {/* Floating emojis */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        {ANIMAL_EMOJIS.map((emoji, i) => (
+          <span
+            key={i}
+            className="animate-float absolute text-3xl opacity-20"
+            style={{
+              left: `${10 + i * 12}%`,
+              top: `${15 + (i % 3) * 25}%`,
+              animationDelay: `${i * 0.5}s`,
+            }}
+          >
+            {emoji}
+          </span>
+        ))}
+      </div>
+
+      <div className="relative w-full max-w-sm space-y-6">
+        {/* Title */}
+        <div className="animate-bounce-in text-center">
+          <div className="mb-2 text-6xl">🔗</div>
+          <h1 className="bg-gradient-to-r from-yellow-300 via-pink-400 to-cyan-400 bg-clip-text text-5xl font-black tracking-tight text-transparent">
+            Ordkjede!
+          </h1>
+          <p className="mt-2 text-lg text-purple-200">
+            Bygg ordkjeder med venner! 🎉
+          </p>
         </div>
 
-        <div className="space-y-4">
+        {/* Name input - always visible */}
+        <div className="animate-slide-up space-y-3" style={{ animationDelay: "0.2s" }}>
+          <label className="block text-center text-sm font-bold text-yellow-300">
+            Hva heter du? 👋
+          </label>
           <input
             type="text"
-            placeholder="Ditt navn"
+            placeholder="Skriv navnet ditt..."
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={20}
-            className="w-full rounded-lg bg-gray-800 px-4 py-3 text-white placeholder-gray-500 outline-none ring-1 ring-gray-700 focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-2xl border-3 border-yellow-400/50 bg-white/10 px-5 py-4 text-center text-xl font-bold text-white placeholder-white/40 outline-none backdrop-blur-sm transition-all focus:border-yellow-400 focus:bg-white/20 focus:scale-105"
           />
+        </div>
 
-          <button
-            onClick={handleCreate}
-            disabled={loading}
-            className="w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold transition hover:bg-indigo-500 disabled:opacity-50"
-          >
-            Opprett nytt spill
-          </button>
-
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-gray-700" />
-            <span className="text-sm text-gray-500">eller</span>
-            <div className="h-px flex-1 bg-gray-700" />
-          </div>
-
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Spillkode"
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-              maxLength={4}
-              className="flex-1 rounded-lg bg-gray-800 px-4 py-3 text-center font-mono text-lg uppercase tracking-widest text-white placeholder-gray-500 outline-none ring-1 ring-gray-700 focus:ring-2 focus:ring-indigo-500"
-            />
+        {mode === "home" ? (
+          <div className="animate-slide-up space-y-3" style={{ animationDelay: "0.4s" }}>
             <button
-              onClick={handleJoin}
+              onClick={handleCreate}
               disabled={loading}
-              className="rounded-lg bg-gray-700 px-6 py-3 font-semibold transition hover:bg-gray-600 disabled:opacity-50"
+              className="w-full rounded-2xl bg-gradient-to-r from-green-400 to-emerald-500 px-6 py-4 text-xl font-black shadow-lg shadow-green-500/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-green-500/40 active:scale-95 disabled:opacity-50"
             >
-              Bli med
+              🎮 Start nytt spill!
+            </button>
+
+            <button
+              onClick={() => setMode("join")}
+              className="w-full rounded-2xl bg-gradient-to-r from-blue-400 to-cyan-500 px-6 py-4 text-xl font-black shadow-lg shadow-blue-500/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-500/40 active:scale-95"
+            >
+              🎟️ Bli med i spill
             </button>
           </div>
+        ) : (
+          <div className="animate-pop space-y-3">
+            <button
+              onClick={() => setMode("home")}
+              className="text-sm text-purple-300 hover:text-white"
+            >
+              ← Tilbake
+            </button>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="KODE"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                maxLength={4}
+                autoFocus
+                className="flex-1 rounded-2xl border-3 border-cyan-400/50 bg-white/10 px-4 py-4 text-center font-mono text-2xl font-black uppercase tracking-[0.3em] text-white placeholder-white/30 outline-none backdrop-blur-sm transition-all focus:border-cyan-400 focus:bg-white/20 focus:scale-105"
+              />
+              <button
+                onClick={handleJoin}
+                disabled={loading}
+                className="rounded-2xl bg-gradient-to-r from-blue-400 to-cyan-500 px-6 py-4 text-xl font-black shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              >
+                Gå! 🚀
+              </button>
+            </div>
+          </div>
+        )}
 
-          {error && (
-            <p className="text-center text-sm text-red-400">{error}</p>
-          )}
-        </div>
+        {error && (
+          <div className="animate-pop rounded-2xl bg-red-500/20 border border-red-400/50 px-4 py-3 text-center font-bold text-red-300">
+            {error}
+          </div>
+        )}
       </div>
     </main>
   );

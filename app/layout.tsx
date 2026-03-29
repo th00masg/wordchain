@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Ordkjede",
-  description: "Flerspiller ordkjede-spill på norsk",
+  title: "🔤 Ordkjede!",
+  description: "Bygg ordkjeder med venner!",
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="no">
-      <body className="min-h-screen bg-gray-950 text-white antialiased">
+      <body className="fun-bg min-h-screen text-white antialiased">
         {children}
       </body>
     </html>
