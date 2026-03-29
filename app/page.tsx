@@ -138,7 +138,7 @@ export default function Home() {
             >
               ← Tilbake
             </button>
-            <div className="flex gap-2">
+            <div className="space-y-3">
               <input
                 type="text"
                 placeholder="KODE"
@@ -146,14 +146,14 @@ export default function Home() {
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 maxLength={4}
                 autoFocus
-                className="flex-1 rounded-2xl border-3 border-cyan-400/50 bg-white/10 px-4 py-4 text-center font-mono text-2xl font-black uppercase tracking-[0.3em] text-white placeholder-white/30 outline-none backdrop-blur-sm transition-all focus:border-cyan-400 focus:bg-white/20 focus:scale-105"
+                className="w-full rounded-2xl border-3 border-cyan-400/50 bg-white/10 px-4 py-4 text-center font-mono text-2xl font-black uppercase tracking-[0.3em] text-white placeholder-white/30 outline-none backdrop-blur-sm transition-all focus:border-cyan-400 focus:bg-white/20 focus:scale-105"
               />
               <button
                 onClick={handleJoin}
                 disabled={loading}
-                className="rounded-2xl bg-gradient-to-r from-blue-400 to-cyan-500 px-6 py-4 text-xl font-black shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                className="w-full rounded-2xl bg-gradient-to-r from-blue-400 to-cyan-500 px-6 py-4 text-xl font-black shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
               >
-                Gå! 🚀
+                {loading ? "⏳ Venter..." : "Gå! 🚀"}
               </button>
             </div>
           </div>

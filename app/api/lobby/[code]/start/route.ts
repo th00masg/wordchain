@@ -25,6 +25,11 @@ export async function POST(
     return NextResponse.json({ error: "Trenger minst 2 spillere" }, { status: 400 });
   }
 
+  // Give more time when a theme is active (AI validation adds ~1-2s per submit)
+  if (game.theme !== "free") {
+    game.turnTime = 25;
+  }
+
   game.state = "playing";
   game.currentTurnPlayerId = game.players[0].id;
   game.turnDeadline = Date.now() + game.turnTime * 1000;

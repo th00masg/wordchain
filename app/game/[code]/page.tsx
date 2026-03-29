@@ -484,11 +484,20 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
                 <button
                   type="submit"
                   disabled={submitting || !word.trim()}
-                  className="rounded-2xl bg-gradient-to-r from-green-400 to-emerald-500 px-6 py-4 text-xl font-black shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+                  className={`rounded-2xl px-6 py-4 text-xl font-black shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 ${
+                    submitting
+                      ? "bg-gradient-to-r from-yellow-400 to-amber-500 animate-pulse"
+                      : "bg-gradient-to-r from-green-400 to-emerald-500"
+                  }`}
                 >
-                  🚀
+                  {submitting ? "⏳" : "🚀"}
                 </button>
               </div>
+              {submitting && game.theme !== "free" && (
+                <div className="text-center text-sm font-bold text-yellow-300 animate-pulse">
+                  🤖 Sjekker om ordet passer temaet...
+                </div>
+              )}
               {error && (
                 <div className="animate-pop rounded-xl bg-red-500/20 border border-red-400/30 px-3 py-2 text-center text-sm font-bold text-red-300">
                   {error}

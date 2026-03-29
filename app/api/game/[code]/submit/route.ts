@@ -49,11 +49,18 @@ export async function POST(
     return NextResponse.json({ error: "Ikke et gyldig norsk ord 🤔" }, { status: 400 });
   }
 
+  // Pause the timer — record when the player submitted
+  const submitTime = Date.now();
+
   // Check theme if not "free"
   if (game.theme !== "free") {
     try {
       const themeResult = await checkTheme(normalizedWord, game.theme);
       if (!themeResult.fits) {
+        // Give back the time spent on API call
+        const apiTime = Date.now() - submitTime;
+        game.turnDeadline = (game.turnDeadline ?? 0) + apiTime;
+        await setGame(game);
         return NextResponse.json(
           { error: `«${normalizedWord}» passer ikke til temaet! ${themeResult.reason} 🚫` },
           { status: 400 }
