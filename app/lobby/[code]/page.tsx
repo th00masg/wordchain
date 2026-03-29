@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
-import { Game } from "@/lib/types";
+import { Game, THEMES, ThemeId } from "@/lib/types";
 
 function getPlayerId() {
   if (typeof window === "undefined") return "";
@@ -30,6 +30,7 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [changingTheme, setChangingTheme] = useState(false);
 
   useEffect(() => {
     const playerId = getPlayerId();
@@ -78,6 +79,24 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
     }
   }
 
+  async function handleThemeChange(theme: ThemeId) {
+    setChangingTheme(true);
+    try {
+      const res = await fetch(`/api/lobby/${code}/theme`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId: getPlayerId(), theme }),
+      });
+      if (res.ok) {
+        setGame((prev) => prev ? { ...prev, theme } : prev);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setChangingTheme(false);
+    }
+  }
+
   function handleCopy() {
     navigator.clipboard.writeText(
       typeof window !== "undefined" ? `${window.location.origin}/join/${code}` : ""
@@ -110,6 +129,7 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
 
   const isHost = game.hostId === getPlayerId();
   const joinUrl = typeof window !== "undefined" ? `${window.location.origin}/join/${code}` : "";
+  const currentTheme = THEMES.find((t) => t.id === game.theme) ?? THEMES[0];
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6">
@@ -135,6 +155,40 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
           <div className="rounded-2xl bg-white p-3 shadow-lg shadow-purple-500/20">
             <QRCodeSVG value={joinUrl} size={140} />
           </div>
+        </div>
+
+        {/* Theme picker */}
+        <div className="animate-pop space-y-2" style={{ animationDelay: "0.25s" }}>
+          <p className="text-center text-sm font-bold text-purple-300">
+            Tema 🎨
+          </p>
+          {isHost ? (
+            <div className="grid grid-cols-4 gap-2">
+              {THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => handleThemeChange(theme.id)}
+                  disabled={changingTheme}
+                  className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-2.5 text-center transition-all hover:scale-105 active:scale-95 ${
+                    game.theme === theme.id
+                      ? "bg-white/20 ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/20"
+                      : "bg-white/5 hover:bg-white/10"
+                  }`}
+                >
+                  <span className="text-2xl">{theme.emoji}</span>
+                  <span className="text-xs font-bold text-white/80">{theme.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+              <span className="text-3xl">{currentTheme.emoji}</span>
+              <div>
+                <p className="font-black text-white">{currentTheme.label}</p>
+                <p className="text-xs text-purple-300">{currentTheme.description}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Start word */}

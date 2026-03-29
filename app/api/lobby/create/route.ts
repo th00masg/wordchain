@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateCode, getGame, setGame, getRandomWord } from "@/lib/redis";
-import { Game } from "@/lib/types";
+import { Game, ThemeId } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
-  const { playerName, playerId } = await req.json();
+  const { playerName, playerId, theme = "free" } = await req.json() as {
+    playerName: string;
+    playerId: string;
+    theme?: ThemeId;
+  };
 
   if (!playerName || !playerId) {
     return NextResponse.json({ error: "Navn og spiller-ID er påkrevd" }, { status: 400 });
@@ -45,6 +49,7 @@ export async function POST(req: NextRequest) {
     turnTime: 20,
     eliminationReason: null,
     winnerName: null,
+    theme,
   };
 
   await setGame(game);

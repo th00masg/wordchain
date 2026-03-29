@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGame, setGame, isValidWord } from "@/lib/redis";
+import { checkTheme } from "@/lib/theme-check";
 
 export async function POST(
   req: NextRequest,
@@ -42,10 +43,25 @@ export async function POST(
     );
   }
 
-  // Validate word
+  // Validate word exists in dictionary
   const valid = await isValidWord(normalizedWord);
   if (!valid) {
-    return NextResponse.json({ error: "Ikke et gyldig norsk ord" }, { status: 400 });
+    return NextResponse.json({ error: "Ikke et gyldig norsk ord 🤔" }, { status: 400 });
+  }
+
+  // Check theme if not "free"
+  if (game.theme !== "free") {
+    try {
+      const themeResult = await checkTheme(normalizedWord, game.theme);
+      if (!themeResult.fits) {
+        return NextResponse.json(
+          { error: `«${normalizedWord}» passer ikke til temaet! ${themeResult.reason} 🚫` },
+          { status: 400 }
+        );
+      }
+    } catch {
+      // If theme check fails, allow the word (don't punish players for API errors)
+    }
   }
 
   // Add word to chain

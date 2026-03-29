@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
-import { Game } from "@/lib/types";
+import { Game, THEMES } from "@/lib/types";
 import {
   unlockAudio,
   playWordSubmit,
@@ -245,6 +245,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   const lastWord = game.chain[game.chain.length - 1]?.word ?? "";
   const requiredLetter = lastWord[lastWord.length - 1];
   const isHost = game.hostId === playerId;
+  const currentTheme = THEMES.find((t) => t.id === game.theme) ?? THEMES[0];
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -258,8 +259,15 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
       {/* Header with timer */}
       <header className="relative overflow-hidden border-b border-white/10 px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-bold text-purple-300">
-            🔗 <span className="font-mono text-yellow-300">{code}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-purple-300">
+              🔗 <span className="font-mono text-yellow-300">{code}</span>
+            </span>
+            {game.theme !== "free" && (
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-bold">
+                {currentTheme.emoji} {currentTheme.label}
+              </span>
+            )}
           </div>
 
           {/* Timer */}

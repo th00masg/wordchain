@@ -9,6 +9,7 @@
     "seed": "npx tsx lib/seed-words.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/typography": "^0.5.19",
     "@upstash/redis": "^1.37.0",
