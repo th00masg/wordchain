@@ -59,8 +59,9 @@ export async function POST(
           { status: 400 }
         );
       }
-    } catch {
-      // If theme check fails, allow the word (don't punish players for API errors)
+    } catch (err) {
+      // Log the error so we can debug, but allow the word
+      console.error("Theme check failed:", err);
     }
   }
 

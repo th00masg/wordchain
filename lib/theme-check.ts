@@ -24,7 +24,7 @@ export async function checkTheme(
   const themeDesc = THEME_DESCRIPTIONS[theme];
 
   const message = await client.messages.create({
-    model: "claude-haiku-4-20250414",
+    model: "claude-sonnet-4-20250514",
     max_tokens: 100,
     messages: [
       {
