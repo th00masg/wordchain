@@ -3,6 +3,18 @@
 import { useEffect, useState, useRef, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { Game } from "@/lib/types";
+import {
+  unlockAudio,
+  playWordSubmit,
+  playLongWord,
+  playYourTurn,
+  playTick,
+  playUrgentTick,
+  playElimination,
+  playVictory,
+  playError,
+  playClick,
+} from "@/lib/sounds";
 
 function getPlayerId() {
   if (typeof window === "undefined") return "";
@@ -23,7 +35,6 @@ const PLAYER_COLORS = [
 
 const REACTIONS = ["🔥", "⚡", "💥", "🌟", "✨", "🎯", "💎", "🚀"];
 const LONG_WORD_REACTIONS = ["🤯", "🏆", "👑", "💪", "🎉"];
-const STREAK_MESSAGES = ["Bra! 👍", "Kjempebra! 🔥", "UTROLIG! ⚡", "LEGENDE! 👑"];
 
 function getTimerColor(timeLeft: number, turnTime: number) {
   const pct = timeLeft / turnTime;
@@ -42,6 +53,11 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [reaction, setReaction] = useState<string | null>(null);
   const [lastChainLen, setLastChainLen] = useState(0);
+  const [prevTurnPlayer, setPrevTurnPlayer] = useState<string | null>(null);
+  const [prevGameState, setPrevGameState] = useState<string | null>(null);
+  const [prevElimination, setPrevElimination] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const lastTickRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const chainEndRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +66,21 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
   const showReaction = useCallback((text: string) => {
     setReaction(text);
     setTimeout(() => setReaction(null), 1500);
+  }, []);
+
+  // Unlock audio on first interaction
+  useEffect(() => {
+    function handleInteraction() {
+      unlockAudio();
+      window.removeEventListener("click", handleInteraction);
+      window.removeEventListener("touchstart", handleInteraction);
+    }
+    window.addEventListener("click", handleInteraction);
+    window.addEventListener("touchstart", handleInteraction);
+    return () => {
+      window.removeEventListener("click", handleInteraction);
+      window.removeEventListener("touchstart", handleInteraction);
+    };
   }, []);
 
   useEffect(() => {
@@ -74,23 +105,53 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
     return () => clearInterval(interval);
   }, [code, playerId, router]);
 
-  // Show reaction when new word is added
+  // Sound: new word submitted
   useEffect(() => {
-    if (!game) return;
+    if (!game || !soundEnabled) return;
     if (game.chain.length > lastChainLen && lastChainLen > 0) {
       const newWord = game.chain[game.chain.length - 1];
       if (newWord.playerId !== "system") {
         if (newWord.word.length >= 8) {
+          playLongWord();
           showReaction(LONG_WORD_REACTIONS[Math.floor(Math.random() * LONG_WORD_REACTIONS.length)]);
         } else {
+          playWordSubmit();
           showReaction(REACTIONS[Math.floor(Math.random() * REACTIONS.length)]);
         }
       }
     }
     setLastChainLen(game.chain.length);
-  }, [game?.chain.length, lastChainLen, showReaction, game]);
+  }, [game?.chain.length, lastChainLen, showReaction, game, soundEnabled]);
 
-  // Countdown timer
+  // Sound: your turn
+  useEffect(() => {
+    if (!game || !soundEnabled) return;
+    const currentTurn = game.currentTurnPlayerId;
+    if (currentTurn !== prevTurnPlayer && currentTurn === playerId) {
+      playYourTurn();
+    }
+    setPrevTurnPlayer(currentTurn);
+  }, [game?.currentTurnPlayerId, prevTurnPlayer, playerId, game, soundEnabled]);
+
+  // Sound: game finished (victory)
+  useEffect(() => {
+    if (!game || !soundEnabled) return;
+    if (game.state === "finished" && prevGameState === "playing") {
+      playVictory();
+    }
+    setPrevGameState(game.state);
+  }, [game?.state, prevGameState, game, soundEnabled]);
+
+  // Sound: elimination
+  useEffect(() => {
+    if (!game || !soundEnabled) return;
+    if (game.eliminationReason && game.eliminationReason !== prevElimination) {
+      playElimination();
+    }
+    setPrevElimination(game.eliminationReason);
+  }, [game?.eliminationReason, prevElimination, game, soundEnabled]);
+
+  // Countdown timer + tick sounds
   useEffect(() => {
     if (!game?.turnDeadline || game.state !== "playing") {
       setTimeLeft(null);
@@ -100,12 +161,22 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
     function tick() {
       const remaining = Math.max(0, Math.ceil((game!.turnDeadline! - Date.now()) / 1000));
       setTimeLeft(remaining);
+
+      // Play tick sounds for current player
+      if (soundEnabled && game!.currentTurnPlayerId === playerId && remaining !== lastTickRef.current) {
+        lastTickRef.current = remaining;
+        if (remaining <= 3 && remaining > 0) {
+          playUrgentTick();
+        } else if (remaining <= 7 && remaining > 0) {
+          playTick();
+        }
+      }
     }
 
     tick();
     const interval = setInterval(tick, 200);
     return () => clearInterval(interval);
-  }, [game?.turnDeadline, game?.state]);
+  }, [game?.turnDeadline, game?.state, game?.currentTurnPlayerId, playerId, soundEnabled]);
 
   // Auto-scroll chain
   useEffect(() => {
@@ -133,18 +204,21 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
       const data = await res.json();
       if (!res.ok) {
         setError(data.error);
+        if (soundEnabled) playError();
       } else {
         setWord("");
         setError("");
       }
     } catch {
       setError("Noe gikk galt 😅");
+      if (soundEnabled) playError();
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleReset() {
+    if (soundEnabled) playClick();
     await fetch(`/api/lobby/${code}/reset`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -208,8 +282,18 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
             </div>
           )}
 
-          <div className="text-sm font-bold text-purple-300">
-            {game.players.filter((p) => p.alive).length}/{game.players.length} igjen 💪
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-bold text-purple-300">
+              {game.players.filter((p) => p.alive).length}/{game.players.length} 💪
+            </div>
+            {/* Sound toggle */}
+            <button
+              onClick={() => { setSoundEnabled(!soundEnabled); playClick(); }}
+              className="rounded-full bg-white/10 p-1.5 text-sm transition-all hover:bg-white/20 active:scale-90"
+              title={soundEnabled ? "Skru av lyd" : "Skru på lyd"}
+            >
+              {soundEnabled ? "🔊" : "🔇"}
+            </button>
           </div>
         </div>
 
